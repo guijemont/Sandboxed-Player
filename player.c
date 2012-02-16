@@ -37,11 +37,33 @@ on_message (GstBus *bus,
   return TRUE;
 }
 
+static void
+load_all_plugins (void)
+{
+  /* NOTE: we leak plugin references like crazy here. That's cool because we
+   * want them to remain loaded. If we want to be clever, we could drop these
+   * references once we're in PAUSED to allow for the unloading of plugins we
+   * don't need.
+   */
+  GList *plugin_list = NULL, *elem;
+  GstRegistry *registry = gst_registry_get_default ();
+
+  plugin_list = gst_registry_get_plugin_list (registry);
+
+  for (elem = plugin_list; elem; elem = elem->next) {
+    GstPlugin *plugin = GST_PLUGIN (elem->data);
+    if (!gst_plugin_is_loaded (plugin))
+      gst_plugin_load (plugin);
+  }
+}
+
 static gboolean
 init_pipeline (const gchar *pipeline_desc)
 {
   GError *error = NULL;
 
+  fprintf (stderr, "Loading all plugins\n");
+  load_all_plugins ();
 
   fprintf (stderr, "Creating pipeline\n");
   pipeline = gst_parse_launch (pipeline_desc, &error);
