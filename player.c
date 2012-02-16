@@ -2,11 +2,18 @@
 #include <gst/gst.h>
 #include "libsandbox.h"
 
+struct PipelineInfo {
+  const gchar *video_shm;
+  const gchar *audio_shm;
+};
+
 GstElement *pipeline;
 GstBus *bus;
 GMainLoop *loop;
 
 static void on_pipeline_ready (void);
+
+#define SHM_SIZE 100000000
 
 static gboolean
 on_message (GstBus *bus,
@@ -58,17 +65,27 @@ load_all_plugins (void)
 }
 
 static gboolean
-init_pipeline (const gchar *pipeline_desc)
+init_pipeline (const struct PipelineInfo *pipeline_info)
 {
   GError *error = NULL;
+  gchar *pipeline_desc;
 
   fprintf (stderr, "Loading all plugins\n");
   load_all_plugins ();
 
   fprintf (stderr, "Creating pipeline\n");
+  pipeline_desc = g_strdup_printf ("fdsrc ! decodebin2 name=decoder "
+      "decoder. ! video/x-raw-yuv;video/x-raw-rgb ! gdppay ! shmsink name=videosink socket-path=%s shm-size=%d "
+      "decoder. ! audio/x-raw-int;audio/x-raw-float ! gdppay ! shmsink name=audiosink socket-path=%s shm-size=%d",
+      pipeline_info->video_shm, SHM_SIZE,
+      pipeline_info->audio_shm, SHM_SIZE);
+
   pipeline = gst_parse_launch (pipeline_desc, &error);
-  if (!pipeline)
-    g_warning ("Could not create pipeline: %s", error->message);
+  g_free (pipeline_desc);
+  if (!pipeline) {
+    fprintf (stderr, "Problem creating pipeline: %s\n", error->message);
+    exit(EXIT_FAILURE);
+  }
 
   fprintf (stderr, "Setting up bus watch\n");
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
@@ -93,16 +110,21 @@ on_pipeline_ready (void)
 int
 main (int argc, char **argv)
 {
+  struct PipelineInfo pipeline_info;
+
   gst_init (&argc, &argv);
 
-  if (argc != 2) {
-    g_print ("Syntax: %s <pipeline>\n", argv[0]);
+  if (argc != 3) {
+    g_print ("Syntax: %s <output shm video socket> <output shm audio socket>\n", argv[0]);
     return EXIT_FAILURE;
   }
 
+  pipeline_info.video_shm = argv[1];
+  pipeline_info.audio_shm = argv[2];
+
   loop = g_main_loop_new (g_main_context_default (), FALSE);
 
-  g_idle_add ((GSourceFunc)init_pipeline, argv[1]);
+  g_idle_add ((GSourceFunc)init_pipeline, &pipeline_info);
 
   g_main_loop_run (loop);
 
