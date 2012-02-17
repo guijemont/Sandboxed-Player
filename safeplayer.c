@@ -46,11 +46,8 @@ exec_decoder (struct SafePlayer *player)
   };
   int ret;
 
-  //ret = execve (SANDBOXME_PATH, args, player->environment);
-  ret = execve (SANDBOXME_PATH, args, NULL);
+  ret = execve (SANDBOXME_PATH, args, player->environment);
   fprintf (stderr, "execve() of %s returned %d: %m\n", SANDBOXME_PATH, ret);
-  /* ret = execve (DECODER_PATH, args, NULL);
-  fprintf (stderr, "execve() of %s returned %d: %m\n", DECODER_PATH, ret); */
   exit (EXIT_FAILURE);
 }
 
