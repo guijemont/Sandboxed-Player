@@ -36,6 +36,7 @@ static void
 exec_decoder (struct SafePlayer *player)
 {
   char * const args[] = {
+    SANDBOXME_PATH,
     "-P",
     "-u1",
     "--",
