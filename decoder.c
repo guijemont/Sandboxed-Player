@@ -114,14 +114,12 @@ on_pipeline_ready (void)
 static gboolean
 shut_down (gpointer data)
 {
-  fprintf (stderr, "Received a signal telling us to shut down.\n");
+  fprintf (stderr, "Decoder: Received a signal telling us to shut down.\n");
   if (pipeline) {
-    //gst_element_set_state (pipeline, GST_STATE_NULL);
-    gst_element_send_event (pipeline, gst_event_new_eos ());
+    gst_element_set_state (pipeline, GST_STATE_NULL);
   }
 
-  //g_idle_add ((GSourceFunc)g_main_loop_quit, loop);
-  //g_main_loop_quit (loop);
+  g_main_loop_quit (loop);
 
   return TRUE;
 }
@@ -156,6 +154,8 @@ main (int argc, char **argv)
   g_idle_add ((GSourceFunc)init_pipeline, &pipeline_info);
 
   g_main_loop_run (loop);
+
+  g_print ("Decoder: over and out!\n");
 
   return EXIT_SUCCESS;
 }
