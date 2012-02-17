@@ -78,8 +78,8 @@ init_pipeline (const struct PipelineInfo *pipeline_info)
 
   fprintf (stderr, "Creating pipeline\n");
   pipeline_desc = g_strdup_printf ("fdsrc ! decodebin2 name=decoder "
-      "decoder. ! video/x-raw-yuv;video/x-raw-rgb ! gdppay ! shmsink name=videosink socket-path=%s shm-size=%d "
-      "decoder. ! audio/x-raw-int;audio/x-raw-float ! gdppay ! shmsink name=audiosink socket-path=%s shm-size=%d",
+      "decoder. ! video/x-raw-yuv;video/x-raw-rgb ! gdppay ! queue ! shmsink name=videosink socket-path=%s shm-size=%d "
+      "decoder. ! audio/x-raw-int;audio/x-raw-float ! gdppay ! queue ! shmsink name=audiosink socket-path=%s shm-size=%d",
       pipeline_info->video_shm, SHM_SIZE,
       pipeline_info->audio_shm, SHM_SIZE);
 
