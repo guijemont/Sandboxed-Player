@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <gst/gst.h>
+#include <glib-unix.h>
 #include "libsandbox.h"
 
 struct PipelineInfo {
@@ -30,6 +31,8 @@ on_message (GstBus *bus,
                                        NULL /* pending */);
       if (new_state == GST_STATE_READY)
         on_pipeline_ready ();
+      if (new_state == GST_STATE_NULL)
+        fprintf (stderr, "decoder: pipeline set to NULL state\n");
     }
     break;
   case GST_MESSAGE_EOS:
@@ -107,6 +110,30 @@ on_pipeline_ready (void)
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
 }
 
+/* signal handler */
+static gboolean
+shut_down (gpointer data)
+{
+  fprintf (stderr, "Received a signal telling us to shut down.\n");
+  if (pipeline) {
+    //gst_element_set_state (pipeline, GST_STATE_NULL);
+    gst_element_send_event (pipeline, gst_event_new_eos ());
+  }
+
+  //g_idle_add ((GSourceFunc)g_main_loop_quit, loop);
+  //g_main_loop_quit (loop);
+
+  return TRUE;
+}
+
+static void
+set_up_signals (void)
+{
+  g_unix_signal_add (SIGHUP, shut_down, NULL);
+  g_unix_signal_add (SIGINT, shut_down, NULL);
+  g_unix_signal_add (SIGTERM, shut_down, NULL);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -123,6 +150,8 @@ main (int argc, char **argv)
   pipeline_info.audio_shm = argv[2];
 
   loop = g_main_loop_new (g_main_context_default (), FALSE);
+
+  set_up_signals ();
 
   g_idle_add ((GSourceFunc)init_pipeline, &pipeline_info);
 
