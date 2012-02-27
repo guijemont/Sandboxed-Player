@@ -181,13 +181,13 @@ main (int argc, char **argv, char **envp)
 {
   struct SafePlayer player;
 
-  gst_init (&argc, &argv);
-
-
   if (argc != 2) {
     g_print ("Syntax: %s media_url\n", argv[0]);
     return EXIT_FAILURE;
   }
+
+  gst_init (&argc, &argv);
+
 
   safe_player_init (&player, argv[1], envp);
   set_up_signals (&player);
