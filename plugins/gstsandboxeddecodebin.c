@@ -181,6 +181,9 @@ gst_sandboxed_decodebin_class_init (GstSandboxedDecodebinClass *self_class)
   GObjectClass *object_class = G_OBJECT_CLASS (self_class);
   GstElementClass *element_class = GST_ELEMENT_CLASS (self_class);
 
+  GST_DEBUG_CATEGORY_INIT (gst_debug_sandboxed_decodebin, "sandboxeddecodebin", 0,
+      "sandboxed decoder bin");
+
   parent_class = g_type_class_peek_parent (self_class);
 
   g_type_class_add_private (self_class, sizeof (GstSandboxedDecodebinPrivate));
