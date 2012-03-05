@@ -138,6 +138,9 @@ gst_sandboxed_decodebin_init (GstSandboxedDecodebin *self)
   priv->shm_audio_socket_path = g_strdup (tmpnam (NULL));
 
   priv->fdsink = gst_element_factory_make ("fdsink", "fdsink0");
+  g_object_set (priv->fdsink,
+                "async", FALSE,
+                NULL);
   priv->audiosrc = gst_element_factory_make ("shmsrc", "audiosrc");
   g_object_set (priv->audiosrc,
                 "socket-path", priv->shm_audio_socket_path, NULL);
