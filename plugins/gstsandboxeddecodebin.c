@@ -190,16 +190,19 @@ gst_sandboxed_decodebin_class_init (GstSandboxedDecodebinClass *self_class)
   element_class->change_state = gst_sandboxed_decodebin_change_state;
 }
 
+#if 0
 static gboolean
 do_async_done (gpointer user_data) {
   GstBin *bin = GST_BIN (user_data);
   GstMessage *message;
 
+  fprintf (stderr, "do_async_done\n");
   message = gst_message_new_async_done (GST_OBJECT_CAST (bin));
   parent_class->handle_message (bin, message);
 
   return FALSE;
 }
+#endif
 
 GstStateChangeReturn
 gst_sandboxed_decodebin_change_state (GstElement *element,
@@ -227,8 +230,15 @@ gst_sandboxed_decodebin_change_state (GstElement *element,
 
     /* set the right fd to fdsink */
     g_object_set (priv->fdsink, "fd", priv->subprocess_stdin, NULL);
+    GST_DEBUG_OBJECT (element, "Waiting for shm sockets to be available\n");
+    sleep (2);
+    GST_DEBUG_OBJECT (element, "Done waiting\n");
 
     break;
+  case GST_STATE_CHANGE_READY_TO_PAUSED:
+    GST_DEBUG_OBJECT (element, "Going to PAUSED");
+    break;
+#if 0
   case GST_STATE_CHANGE_READY_TO_PAUSED:
     /* TODO: check subprocess is ready with the help of file monitoring, if
      * not, do the change asynchronously */
@@ -243,6 +253,10 @@ gst_sandboxed_decodebin_change_state (GstElement *element,
         g_timeout_add (2000, do_async_done, self);
       }
 
+    break;
+#endif
+  case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
+    GST_DEBUG_OBJECT (element, "Going to PLAYING");
     break;
   case GST_STATE_CHANGE_READY_TO_NULL:
     /* TODO: clean up some stuff, including unlinking the stuff the subprocess
