@@ -52,10 +52,12 @@ static gboolean
 plugin_init (GstPlugin * plugin)
 {
   gst_element_register (plugin, "sandboxeddecodebin", GST_RANK_NONE,
-      GST_TYPE_SANDBOXED_DECODEBIN);
+      GST_SANDBOXED_DECODEBIN_TYPE);
 
   return TRUE;
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, "sandboxeddecodebin", "FIXME Template plugin", plugin_init, VERSION, "LGPL",   /* FIXME */
-    "GStreamer", "http://gstreamer.net/")
+GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, "sandboxeddecodebin",
+                   "Decodebin that does the decoding in a separate, sandboxed process",
+                   plugin_init, VERSION, "LGPL",
+                   "Sandboxed-decodebin", "http://www.igalia.com/")
