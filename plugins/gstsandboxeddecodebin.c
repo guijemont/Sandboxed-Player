@@ -91,7 +91,7 @@ start_decoder (gchar *audio_socket_path,
   };
 
   env = g_get_environ ();
-  if (g_spawn_async_with_pipes (NULL, /* working_directory */
+  if (!g_spawn_async_with_pipes (NULL, /* working_directory */
                                 args,
                                 env,
                                 0, /* flags */
