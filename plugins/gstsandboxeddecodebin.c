@@ -273,6 +273,14 @@ gst_sandboxed_decodebin_change_state (GstElement *element,
     bret = GST_ELEMENT_CLASS (parent_class)->change_state (element, state_change);
     if (bret == GST_STATE_CHANGE_FAILURE)
       ret = bret;
+
+  if (state_change == GST_STATE_CHANGE_READY_TO_PAUSED
+      && ret != GST_STATE_CHANGE_FAILURE) {
+    GstStateChangeReturn fdret;
+    GST_DEBUG_OBJECT (element, "Trying to set fdsink to PLAYING");
+    fdret = gst_element_set_state (priv->fdsink, GST_STATE_PLAYING);
+    GST_DEBUG_OBJECT (element, "Returned: %s",
+                      gst_element_state_change_return_get_name (fdret));
   }
 
   return ret;
