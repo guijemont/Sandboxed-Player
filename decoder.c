@@ -140,7 +140,7 @@ main (int argc, char **argv)
   gst_init (&argc, &argv);
 
   if (argc != 3) {
-    g_print ("Syntax: %s <output shm video socket> <output shm audio socket>\n", argv[0]);
+    fprintf (stderr, "Syntax: %s <output shm video socket> <output shm audio socket>\n", argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -155,7 +155,7 @@ main (int argc, char **argv)
 
   g_main_loop_run (loop);
 
-  g_print ("Decoder: over and out!\n");
+  fprintf (stderr, "Decoder: over and out!\n");
 
   return EXIT_SUCCESS;
 }
