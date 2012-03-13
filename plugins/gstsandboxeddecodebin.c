@@ -25,6 +25,7 @@
 
 #include <gst/gst.h>
 #include <gio/gio.h>
+#include <glib/gstdio.h>
 
 #include "gstsandboxeddecodebin.h"
 
@@ -261,27 +262,47 @@ gst_sandboxed_decodebin_change_state (GstElement *element,
   case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
     GST_DEBUG_OBJECT (element, "Going to PLAYING");
     break;
-  case GST_STATE_CHANGE_READY_TO_NULL:
-    /* TODO: clean up some stuff, including unlinking the stuff the subprocess
-     * cannot unlink */
-    break;
   default:
     break;
   }
   if (ret != GST_STATE_CHANGE_FAILURE) {
     GstStateChangeReturn bret;
     bret = GST_ELEMENT_CLASS (parent_class)->change_state (element, state_change);
-    if (bret == GST_STATE_CHANGE_FAILURE)
+    if (bret == GST_STATE_CHANGE_FAILURE) {
+      GST_WARNING_OBJECT (element, "parent change_state failed!");
       ret = bret;
+    }
   }
 
-  if (state_change == GST_STATE_CHANGE_READY_TO_PAUSED
-      && ret != GST_STATE_CHANGE_FAILURE) {
+  if (ret != GST_STATE_CHANGE_FAILURE) {
     GstStateChangeReturn fdret;
-    GST_DEBUG_OBJECT (element, "Trying to set fdsink to PLAYING");
-    fdret = gst_element_set_state (priv->fdsink, GST_STATE_PLAYING);
-    GST_DEBUG_OBJECT (element, "Returned: %s",
-                      gst_element_state_change_return_get_name (fdret));
+    gint fd;
+    switch (state_change) {
+    case GST_STATE_CHANGE_READY_TO_PAUSED:
+      GST_DEBUG_OBJECT (element, "Trying to set fdsink to PLAYING");
+      fdret = gst_element_set_state (priv->fdsink, GST_STATE_PLAYING);
+      GST_DEBUG_OBJECT (element, "Returned: %s",
+                        gst_element_state_change_return_get_name (fdret));
+      break;
+    case GST_STATE_CHANGE_READY_TO_NULL:
+      /* Closing the fd sounds like a polite thing to do now*/
+      g_object_get (priv->fdsink, "fd", &fd, NULL);
+      close (fd);
+
+      /* Unlinking the stuff the decoder could not unlink because it doesn't
+       * have the necessary privileges */
+      GST_DEBUG_OBJECT (element, "Trying to unlink %s and %s",
+                        priv->shm_video_socket_path,
+                        priv->shm_audio_socket_path);
+      if (-1 == g_unlink (priv->shm_video_socket_path))
+        GST_WARNING_OBJECT ("Could not unlink %s: %m", priv->shm_video_socket_path);
+      if (-1 == g_unlink (priv->shm_audio_socket_path))
+        GST_WARNING_OBJECT ("Could not unlink %s: %m", priv->shm_audio_socket_path);
+      /* need to get access to shm_pipe->shm_area->shm_area_name */
+      break;
+    default:
+      break;
+    }
   }
 
   return ret;
