@@ -6,6 +6,9 @@
 struct PipelineInfo {
   const gchar *video_shm;
   const gchar *audio_shm;
+  GstElement *videosink;
+  GstElement *audiosink;
+  gint connections;
 };
 
 GstElement *pipeline;
@@ -67,8 +70,42 @@ load_all_plugins (void)
   }
 }
 
+static void
+on_client_connected (GstElement *shmsink,
+                     gint arg0,
+                     struct PipelineInfo *pipeline_info)
+{
+  g_atomic_int_inc (&pipeline_info->connections);
+}
+
+static void
+on_client_disconnected (GstElement *shmsink,
+                     gint arg0,
+                     struct PipelineInfo *pipeline_info)
+{
+  if (g_atomic_int_dec_and_test (&pipeline_info->connections)) {
+    fprintf (stderr, "No more connections, quitting!\n");
+    gst_element_set_state (pipeline, GST_STATE_NULL);
+    g_object_unref (pipeline);
+    g_main_loop_quit (loop);
+  }
+}
+
+static void
+monitor_shmsink_connections (struct PipelineInfo *pipeline_info)
+{
+  g_signal_connect (pipeline_info->videosink, "client-connected",
+                    G_CALLBACK (on_client_connected), pipeline_info);
+  g_signal_connect (pipeline_info->videosink, "client-disconnected",
+                    G_CALLBACK (on_client_disconnected), pipeline_info);
+  g_signal_connect (pipeline_info->audiosink, "client-connected",
+                    G_CALLBACK (on_client_connected), pipeline_info);
+  g_signal_connect (pipeline_info->audiosink, "client-disconnected",
+                    G_CALLBACK (on_client_disconnected), pipeline_info);
+}
+
 static gboolean
-init_pipeline (const struct PipelineInfo *pipeline_info)
+init_pipeline (struct PipelineInfo *pipeline_info)
 {
   GError *error = NULL;
   gchar *pipeline_desc;
@@ -89,6 +126,11 @@ init_pipeline (const struct PipelineInfo *pipeline_info)
     fprintf (stderr, "Problem creating pipeline: %s\n", error->message);
     exit(EXIT_FAILURE);
   }
+
+  pipeline_info->videosink = gst_bin_get_by_name (GST_BIN (pipeline), "videosink");
+  pipeline_info->audiosink = gst_bin_get_by_name (GST_BIN (pipeline), "audiosink");
+
+  monitor_shmsink_connections (pipeline_info);
 
   fprintf (stderr, "Setting up bus watch\n");
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
@@ -146,6 +188,7 @@ main (int argc, char **argv)
 
   pipeline_info.video_shm = argv[1];
   pipeline_info.audio_shm = argv[2];
+  pipeline_info.connections = 0;
 
   loop = g_main_loop_new (g_main_context_default (), FALSE);
 
