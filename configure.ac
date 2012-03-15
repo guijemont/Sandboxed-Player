@@ -61,6 +61,11 @@ PKG_CHECK_MODULES(GST, [
   ])
 ])
 
+PKG_CHECK_MODULES(GIO, [gio-2.0], [
+  AC_SUBST(GIO_CFLAGS)
+  AC_SUBST(GIO_LIBS)
+])
+
 dnl check if compiler understands -Wall (if yes, add -Wall to GST_CFLAGS)
 AC_MSG_CHECKING([to see if compiler understands -Wall])
 save_CFLAGS="$CFLAGS"
