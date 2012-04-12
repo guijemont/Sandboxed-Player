@@ -31,6 +31,14 @@ AC_CHECK_PROG(HAVE_PKGCONFIG, pkg-config, [ ], [
   AC_MSG_ERROR([You need to have pkg-config installed!])
 ])
 
+dnl check that sandboxme is installed
+AC_ARG_VAR(SANDBOXME_PATH, path to the sandboxme executable)
+AC_PATH_PROG([SANDBOXME_PATH], sandboxme)
+test -x "${SANDBOXME_PATH}" || AC_MSG_ERROR([Cannot find sandboxme!])
+
+dnl that's to ensure this gets into config.h
+AC_DEFINE_UNQUOTED(SANDBOXME_PATH, "$SANDBOXME_PATH", path to the sandboxme executable)
+
 dnl Check for the required version of GStreamer core (and gst-plugins-base)
 dnl This will export GST_CFLAGS and GST_LIBS variables for use in Makefile.am
 dnl

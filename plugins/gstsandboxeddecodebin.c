@@ -28,6 +28,7 @@
 #include <glib/gstdio.h>
 
 #include "gstsandboxeddecodebin.h"
+#include "../config.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_debug_sandboxed_decodebin);
 #define GST_CAT_DEFAULT gst_debug_sandboxed_decodebin
@@ -37,8 +38,7 @@ G_DEFINE_TYPE (GstSandboxedDecodebin, gst_sandboxed_decodebin, GST_TYPE_BIN);
 #define GST_SANDBOXED_DECODEBIN_GET_PRIVATE(o)\
     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GST_SANDBOXED_DECODEBIN_TYPE, GstSandboxedDecodebinPrivate))
 
-#define DECODER_PATH "./decoder"
-#define SANDBOXME_PATH "../setuid-sandbox/sandboxme"
+#define DECODER_PATH "decoder"
 
 #define AUDIO_SOCKET 0
 #define VIDEO_SOCKET 1
