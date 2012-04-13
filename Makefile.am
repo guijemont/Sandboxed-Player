@@ -1,4 +1,4 @@
-SUBDIRS = plugins
+SUBDIRS = plugins tools
 
 EXTRA_DIST = autogen.sh
 
