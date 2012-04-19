@@ -38,7 +38,7 @@ G_DEFINE_TYPE (GstSandboxedDecodebin, gst_sandboxed_decodebin, GST_TYPE_BIN);
 #define GST_SANDBOXED_DECODEBIN_GET_PRIVATE(o)\
     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GST_SANDBOXED_DECODEBIN_TYPE, GstSandboxedDecodebinPrivate))
 
-#define DECODER_PATH "decoder"
+#define DECODER_PATH "gst-decoder"
 
 #define AUDIO_SOCKET 0
 #define VIDEO_SOCKET 1
