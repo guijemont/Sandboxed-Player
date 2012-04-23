@@ -148,7 +148,21 @@ init_pipeline (struct PipelineInfo *pipeline_info)
 static void
 on_pipeline_ready (void)
 {
-  fprintf (stderr, "pipeline is READY, going to PLAYING\n");
+  fprintf (stderr, "pipeline is READY\n");
+  if (NULL == g_getenv("GST_DECODER_DEBUG")) {
+    /* Unless we're in debug mode, close stdout and stderr which are likely
+     * to be fds on a tty, which is a potential "escape" risk, and make them
+     * point to /dev/null */
+    int devnul = -1;
+    fprintf (stderr, "Going into silent mode\n");
+    devnul = open ("/dev/null", 0, O_RDWR);
+    g_assert (devnul != -1);
+    /* make stdout point to /dev/null */
+    g_assert (-1 != dup2 (devnul, 1));
+    /* make stderr point to /dev/null */
+    g_assert (-1 != dup2 (devnul, 2));
+  }
+  fprintf (stderr, "going to PLAYING\n");
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
 }
 
