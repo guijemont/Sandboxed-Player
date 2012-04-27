@@ -140,8 +140,6 @@ init_pipeline (struct PipelineInfo *pipeline_info)
   fprintf (stderr, "Going to READY\n");
   gst_element_set_state (pipeline, GST_STATE_READY);
 
-  chrootme ();
-
   return FALSE;
 }
 
@@ -162,6 +160,8 @@ on_pipeline_ready (void)
     /* make stderr point to /dev/null */
     g_assert (-1 != dup2 (devnul, 2));
   }
+  chrootme ();
+
   fprintf (stderr, "going to PLAYING\n");
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
 }
