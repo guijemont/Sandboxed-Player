@@ -27,6 +27,8 @@
 #include <gio/gio.h>
 #include <glib/gstdio.h>
 
+#include <sys/mman.h>
+
 #include "gstsandboxeddecodebin.h"
 #include "../config.h"
 
@@ -58,6 +60,8 @@ struct _GstSandboxedDecodebinPrivate {
   int subprocess_stdin;
   gchar *shm_video_socket_path;
   gchar *shm_audio_socket_path;
+  gchar *audio_shm_area_name;
+  gchar *video_shm_area_name;
 
   GFileMonitor *monitors[LAST_SOCKET+1];
   gboolean file_ready[LAST_SOCKET+1];
@@ -284,6 +288,16 @@ gst_sandboxed_decodebin_change_state (GstElement *element,
       GST_DEBUG_OBJECT (element, "Returned: %s",
                         gst_element_state_change_return_get_name (fdret));
       break;
+    case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
+      g_object_get (priv->audiosrc,
+                    "shm-area-name", &priv->audio_shm_area_name, NULL);
+      g_object_get (priv->videosrc,
+                    "shm-area-name", &priv->video_shm_area_name, NULL);
+      GST_DEBUG_OBJECT (element, "Name of audio/video shm areas: "
+                        "\"%s\" and \"%s\"\n",
+                        priv->audio_shm_area_name,
+                        priv->video_shm_area_name);
+      break;
     case GST_STATE_CHANGE_READY_TO_NULL:
       /* Closing the fd sounds like a polite thing to do now*/
       g_object_get (priv->fdsink, "fd", &fd, NULL);
@@ -295,10 +309,21 @@ gst_sandboxed_decodebin_change_state (GstElement *element,
                         priv->shm_video_socket_path,
                         priv->shm_audio_socket_path);
       if (-1 == g_unlink (priv->shm_video_socket_path))
-        GST_WARNING_OBJECT ("Could not unlink %s: %m", priv->shm_video_socket_path);
+        GST_WARNING_OBJECT (element, "Could not unlink %s: %m", priv->shm_video_socket_path);
       if (-1 == g_unlink (priv->shm_audio_socket_path))
-        GST_WARNING_OBJECT ("Could not unlink %s: %m", priv->shm_audio_socket_path);
-      /* need to get access to shm_pipe->shm_area->shm_area_name */
+        GST_WARNING_OBJECT (element, "Could not unlink %s: %m", priv->shm_audio_socket_path);
+
+      GST_DEBUG_OBJECT (element,
+                        "Trying to unlink audio/video shm areas: \"%s\" and \"%s\"\n",
+                        priv->audio_shm_area_name,
+                        priv->video_shm_area_name);
+      if (-1 == shm_unlink (priv->audio_shm_area_name))
+        GST_WARNING_OBJECT (element, "Could not unlink shm area %s: %m",
+                            priv->audio_shm_area_name);
+      if (-1 == shm_unlink (priv->video_shm_area_name))
+        GST_WARNING_OBJECT (element, "Could not unlink shm area %s: %m",
+                            priv->video_shm_area_name);
+      /* FIXME: where do we free all these strings? */
       break;
     default:
       break;
