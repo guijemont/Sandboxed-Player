@@ -63,9 +63,11 @@ struct _GstSandboxedDecodebinPrivate {
   gchar *audio_shm_area_name;
   gchar *video_shm_area_name;
 
-  GFileMonitor *monitors[LAST_SOCKET+1];
-  gboolean file_ready[LAST_SOCKET+1];
+  GFileMonitor *audio_monitor;
+  GFileMonitor *video_monitor;
   GCancellable *monitor_cancellable;
+  gboolean subprocess_ready;
+  gint uninitialised_socket_paths;
 };
 
 static GstStateChangeReturn
@@ -114,6 +116,65 @@ start_decoder (gchar *audio_socket_path,
   return subprocess_stdin;
 }
 
+static void
+subprocess_ready (GstSandboxedDecodebin *self)
+{
+  self->priv->subprocess_ready = TRUE;
+  GST_DEBUG_OBJECT (self, "subprocess looks ready");
+}
+
+
+static void
+on_file_changed (GFileMonitor     *monitor,
+                 GFile            *file,
+                 GFile            *other_file,
+                 GFileMonitorEvent event_type,
+                 GstSandboxedDecodebin *self)
+{
+  if (event_type == G_FILE_MONITOR_EVENT_CREATED
+      && g_atomic_int_dec_and_test (&self->priv->uninitialised_socket_paths)) {
+    g_cancellable_cancel (self->priv->monitor_cancellable);
+    subprocess_ready (self);
+  }
+}
+
+/* FIXME: reference the monitors in self->priv so that we can clean them up later */
+static void
+monitor_subprocess_creation (GstSandboxedDecodebin *self)
+{
+  GFile *audio_file, *video_file;
+
+  GST_DEBUG_OBJECT (self, "Putting monitors on %s and %s",
+                    self->priv->shm_audio_socket_path,
+                    self->priv->shm_video_socket_path);
+
+  self->priv->monitor_cancellable = g_cancellable_new ();
+
+  audio_file = g_file_new_for_path (self->priv->shm_audio_socket_path);
+  self->priv->audio_monitor =
+      g_file_monitor_file (audio_file, G_FILE_MONITOR_NONE,
+                           self->priv->monitor_cancellable, NULL);
+
+  video_file = g_file_new_for_path (self->priv->shm_video_socket_path);
+  self->priv->video_monitor =
+      g_file_monitor_file (video_file, G_FILE_MONITOR_NONE,
+                           self->priv->monitor_cancellable, NULL);
+  g_signal_connect (self->priv->audio_monitor, "changed",
+                    G_CALLBACK (on_file_changed), self);
+  g_signal_connect (self->priv->video_monitor, "changed",
+                    G_CALLBACK (on_file_changed), self);
+
+  if (g_file_query_exists (audio_file, self->priv->monitor_cancellable)
+      || g_file_query_exists (video_file, self->priv->monitor_cancellable)) {
+    GST_WARNING_OBJECT (self,
+        "Some of the files we are monitoring for creation already exist!");
+  }
+
+  g_object_unref (audio_file);
+  g_object_unref (video_file);
+}
+
+
 /* GObject vmethod implementations */
 
 static void
@@ -135,12 +196,15 @@ gst_sandboxed_decodebin_init (GstSandboxedDecodebin *self)
          *gdpaudiosrcpad,
          *gdpvideosrcpad;
 
-  priv = GST_SANDBOXED_DECODEBIN_GET_PRIVATE (self);
+  self->priv = priv = GST_SANDBOXED_DECODEBIN_GET_PRIVATE (self);
 
   priv->subprocess_stdin = -1;
 
   priv->shm_video_socket_path = g_strdup (tmpnam (NULL));
   priv->shm_audio_socket_path = g_strdup (tmpnam (NULL));
+  priv->subprocess_ready = FALSE;
+  priv->uninitialised_socket_paths = 2;
+  monitor_subprocess_creation (self);
 
   priv->fdsink = gst_element_factory_make ("fdsink", "fdsink0");
   g_object_set (priv->fdsink,
@@ -239,7 +303,11 @@ gst_sandboxed_decodebin_change_state (GstElement *element,
     /* set the right fd to fdsink */
     g_object_set (priv->fdsink, "fd", priv->subprocess_stdin, NULL);
     GST_DEBUG_OBJECT (element, "Waiting for shm sockets to be available\n");
-    sleep (2);
+    while (!self->priv->subprocess_ready) {
+      /* does that count as acceptable code? The alternatives are another
+       * thread to monitor file creation or sleep() */
+      g_main_context_iteration (NULL, TRUE);
+    }
     GST_DEBUG_OBJECT (element, "Done waiting\n");
 
     break;
