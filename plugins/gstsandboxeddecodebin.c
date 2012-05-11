@@ -18,7 +18,7 @@
  */
 
 /**
- * SCETION:element-sandboxeddecodebin
+ * SECTION:element-sandboxeddecodebin
  *
  * DOCME
  */
